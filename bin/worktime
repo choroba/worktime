@@ -1,0 +1,372 @@
+#!/usr/bin/perl
+# -*- cperl -*-
+#
+# (c) E. Choroba 2003-11
+#
+
+use strict;
+use POSIX;
+use Pod::Usage;
+
+my$VERSION='1.8';
+
+my%option;
+
+sub usage {
+print "worktime (action: -i project|(-o|-x) [project]|-l|-r|-s|-w|-u|-h|-m) (options: [-c comment] [-f file])\n";
+exit;
+} # usage
+
+sub help {
+print<<EOH;
+worktime (action + options)
+actions:
+  -i project   : check in
+  -o [project] : check out (not needed if checked in only once)
+  -x [project] : change project (check out all)
+  -l           : list projects
+  -r           : report
+  -s           : show status
+  -w           : show file
+  -u           : usage
+  -h           : help (this page)
+  -m           : manual
+options:
+  -c         : comment (optional for -i, -o and -x)
+  -f         : file to use (default $ENV{HOME}/.worktime or STDIN if run in pipe)
+EOH
+exit;
+} # help
+
+sub man {
+  pod2usage(-verbose=>2);
+} # man
+
+sub mytime{
+  my($sec,$min,$hour,$mday,$mon,$year)=localtime();
+  $year+=1900;$mon='0'.$mon if($mon++<9);
+  $mday='0'.$mday if($mday<10);
+  $hour='0'.$hour if($hour<10);
+  $min='0'.$min if($min<10);
+  $sec='0'.$sec if($sec<10);
+  "$year/$mon/$mday $hour:$min:$sec";
+} # mytime
+
+sub print_report {
+  my%tab;
+  my$now=shift;
+  open F,$option{f} or die"Error: Can't open $option{f} for reading.\n";
+  while(my$line=<F>){
+    if($line=~m!^([oi]) ([0-9]{4})/([0-9]{2})/([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})!){
+      my($io,$y,$mo,$d,$h,$mi,$s)=($1,$2,$3,$4,$5,$6,$7);
+      $line=~m!. \S+ \S+ (.*)$!;
+      my$proj=$1;
+      $proj=~s/ \[.*//;
+      $y-=1900;$mo--;
+      my$time=POSIX::mktime($s,$mi,$h,$d,$mo,$y);
+      if($io eq'i'){
+	if($tab{$proj}{status}eq'i'){
+	  die"Error: Double check-in.\n";
+	}
+	$tab{$proj}{status}='i';
+	$tab{$proj}{itime}=$time;
+      }else{ # out
+        if(!$tab{$proj}{status}){
+          die"Error:Out without in.\n";
+        }elsif($tab{$proj}{status}eq'o'){
+	  die"Error: Double check-out.\n";
+        }
+	$tab{$proj}{status}='o';
+	$tab{$proj}{sumtime}+=POSIX::difftime($time,$tab{$proj}{itime});
+      }
+    }else{
+      die"Error: Wrong file format: $option{f}.\n"unless$line=~m/^;/;
+    }
+  }
+  my($maxl,$maxtl);
+  foreach my$proj (keys %tab){
+    if($tab{$proj}{status}eq'i'){
+      print STDERR"Warning: Unfinished project $proj.\n";
+      $tab{$proj}{sumtime}+=POSIX::difftime($now,$tab{$proj}{itime});
+    }
+    if(length($proj)>$maxl){$maxl=length($proj)}
+    my$secs=$tab{$proj}{sumtime}%60;
+    $tab{$proj}{sumtime}-=$secs;
+    $secs=sprintf('%02d',$secs);
+    $tab{$proj}{sumtime}/=60;
+    my$mins=($tab{$proj}{sumtime}%60);
+    $tab{$proj}{sumtime}-=$mins;
+    $mins=sprintf('%02d',$mins);
+    $tab{$proj}{sumtime}/=60;
+    my$hours=$tab{$proj}{sumtime};
+    $tab{$proj}{timestring}="$hours:$mins:$secs\n";
+    if(length($tab{$proj}{timestring})>$maxtl){
+      $maxtl=length($tab{$proj}{timestring})
+    }
+  }
+  foreach my$proj (sort keys %tab){
+    print sprintf('%-'.($maxl+2).'s',$proj)
+      ,sprintf('%'.$maxtl.'s',$tab{$proj}{timestring});
+  }
+} # print_report
+
+sub status ($) {
+  my$die=shift;
+  my(%tab,$projects);
+  unless(open F,"$option{f}"){
+    die"Error: Can't open $option{f} for reading.\n"if'die'eq$die;
+  }
+  while(my$line=<F>){
+    if($line=~m/^i (.......... ........) (.*)/){
+      my$time=$1;my$proj=$2;$proj=~s/ \[.*//;
+      die"Error: Double check-in at $proj $time.\n"if$tab{$proj}{status}eq'i';
+      $tab{$proj}{since}=$time;
+      $tab{$proj}{status}='i';
+      $projects++;
+    }elsif($line=~m/^o (.......... ........) (.*)/){
+      my$time=$1;my$proj=$2;$proj=~s/ \[.*//;
+      die"Error: Double check-out at $proj $time.\n"if$tab{$proj}{status}eq'o';
+      $tab{$proj}{status}='o';
+      $projects--;
+    }else{
+      die"Error: Wrong file format.\n"unless$line=~m/^;/;
+    }
+  }
+  $projects,%tab;
+} # status
+
+sub list {
+  open F,$option{f} or die"Error: Can't open $option{f} for reading.\n";
+  my%project;
+  while(my$line=<F>){
+    if($line=~m/^i [^ ]+ [^ ]+ (.*)/){
+      my$name=$1;
+      $name=~s/ \[.*//;
+      $project{$name}=1;
+    }
+  }
+  sort(keys %project);
+} # list
+
+sub print_list {
+  print join"\n",(list(),'');
+} # print_list
+
+sub checkin {
+  my$time=shift;
+  my$change=shift;
+  if($change and not $option{p}){
+    print STDERR "Warning: No project to check in.\n";
+    return;
+  }
+  die"Error: Project not specified.\n"unless($option{p});
+  $option{p}=~y/[]/()/;
+  my($projects,%tab)=status('no-die');
+  die"Error: Already checked-in.\n"if$tab{$option{p}}{status}eq'i';
+  if($projects){
+    print STDERR 'Warning: Following project'
+      .($projects>1?'s':'').' already running: ';
+    print map $_.' ',grep $tab{$_}{status}eq'i',keys %tab;
+    print "\n";
+  }
+  open F,">>$option{f}" or die"Error: Can't open $option{f} for appending.";
+  print F "i $time $option{p}";
+  if(exists $option{c}){
+    $option{c}=~y/[]/()/;
+    print F " [$option{c}]";
+  }
+  print F "\n";
+  close F;
+} # checkin
+
+sub checkout ($){
+  my($projects,%tab)=status('die');
+  if($projects==1){
+    my($p)=grep $tab{$_}{status}eq'i',keys%tab;
+    $option{p}=$p unless $option{p};
+  }
+  die"Error: No project specified.\n"unless$option{p};
+  $option{p}=~y/[]/()/;
+  die"Error: Project $option{p} not checked in.\n"unless$tab{$option{p}}{status}eq'i';
+  open F,">>$option{f}" or die"Error: Can't open $option{f} for appending.";
+  my$time=shift;
+  print F "o $time $option{p}";
+  if(exists $option{c}){
+    $option{c}=~y/[]/()/;
+    print F " [$option{c}]";
+  }
+  print F "\n";
+  close F;
+} # checkout
+
+sub checkout_all ($){
+  my($projects,%tab)=status('die');
+  print STDERR"Warning: no projects to check out.\n"unless$projects;
+  my$time=shift;
+  my $in_p=$option{p};
+  my $keep_comment=$option{c};
+  delete $option{c};
+  foreach(keys %tab){
+    $option{p}=$_,checkout$time if $tab{$_}{status}eq'i';
+  }
+  $option{p}=$in_p;
+  if(defined$keep_comment){
+    $option{c}=$keep_comment;
+  }else{
+    delete$option{c};
+  }
+  checkin($time,'x');
+} # checkout-all
+
+sub print_status {
+  my($projects,%tab)=status('die');
+  if($projects){
+    my@msg1=('is','ese');my@msg2=('','s');
+    print"Working on th".$msg1[$projects>1]." project".$msg2[$projects>1].': ';
+    print map {
+      "\n$_ [since $tab{$_}{since}]"if $tab{$_}{status}eq'i'
+    } keys %tab;
+    print"\n";
+  }else{
+    print"Not working now.\n"
+  }
+} # print_status
+
+################################################################
+#			       M A I N
+################################################################
+
+my($action,$error_msg);
+while(@ARGV){
+  my$arg=shift @ARGV;
+  if($arg=~m/^-([cf])(.*)/){
+    if($2){$option{$1}=$2}else{$option{$1}=shift @ARGV}
+  }elsif($arg=~m/^-([mwsriolhux])/){
+    unless($action){
+      $action=$1;
+      if($action=~/[ix]/){
+	if($arg=~m/^-.(.+)/){
+	  $option{p}=$1
+	}else{
+	  $option{p}=shift@ARGV;
+	}
+      }
+      if($action=~/[o]/){
+	if($arg=~m/^-.(.+)/){
+	  $option{p}=$1
+	}else{
+	  $option{p}=shift@ARGV;
+	  unshift(@ARGV,$option{p})if$option{p}=~m/^-[cf]/;
+	}
+      }
+    }else{
+      $error_msg="Can't mix actions -$action and -$1.\n"
+    }
+  }else{
+    $error_msg="Unknown option $arg.\n"
+  }
+  die 'Error: '.$error_msg."See worktime -h or -u.\n" if $error_msg;
+}
+die"No action specified.\n"unless$action;
+unless(exists$option{f}){
+  if(-t 0){ # run with stdin from tty
+    $option{f}="$ENV{HOME}/.worktime";
+  }else{
+    $option{f}='-';
+  }
+}
+if($action eq'h'){help()}
+elsif($action eq'u'){usage()}
+elsif($action eq'm'){man()}
+if($action eq'l'){print_list()}
+elsif($action eq'i'){checkin(mytime())}
+elsif($action eq'r'){print_report(mktime((localtime())[0..5]))}
+elsif($action eq'x'){checkout_all(mytime());}
+elsif($action eq'w'){system"cat $option{f}"}
+elsif($action eq's'){print_status()}
+else{checkout(mytime())}
+
+__END__
+
+=head1 SYNOPSIS
+
+ worktime -i project [-c comment] [-f file]
+ worktime -o|-x [project]  [-c comment] [-f file]
+ worktime -l|-r|-s|-w [ -f file ]
+ worktime -u|-h|-m
+
+=head1 DESCRIPTION
+
+Worktime should help you in keeping track of what projects you are
+working on and for how long.
+
+=head1 OPTIONS
+
+B<Actions>
+
+=over 1
+
+=item I<-i project>
+
+Check in the specified project at current date and time.
+
+=item I<-o [project]>
+
+Check out from the specified project (not needed if working on one
+project only).
+
+=item I<-x [project]>
+
+Change project: check out all running projects and check in the
+specified one. If the project is not specified, just check out all.
+
+=item I<-l>
+
+List names of all projects ever checked in.
+
+=item I<-r>
+
+Show report, i.e. for how long you have worked for each project.
+
+=item I<-s>
+
+Show status, i.e. running projects.
+
+=item I<-w>
+
+Show worktime internal file.
+
+=item I<-u>
+
+Show usage.
+
+=item I<-h>
+
+Show help.
+
+=item I<-m>
+
+Show manual (this page).
+
+=back
+
+B<Options:>
+
+=over 1
+
+=item I<-c>
+
+Add comment to action (optional for B<-i>, B<-o> and B<-x>).
+
+=item I<-f file>
+
+Use file instead of default $HOME/.worktime. If 'B<->' is given, or -f
+is not specified and STDIN is not a tty, use standard input.
+
+=back
+
+=head1 AUTHOR
+
+E. Choroba <choroba[at]matfyz[dot]cz>
+
+=cut
