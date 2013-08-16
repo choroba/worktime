@@ -1,8 +1,5 @@
 #!/usr/bin/perl
 # -*- cperl -*-
-#
-# (c) E. Choroba 2003-13
-#
 
 use strict;
 use POSIX qw(mktime difftime);
@@ -104,7 +101,7 @@ sub print_report {
         $tab{$proj}{timestring} = "$hours:$mins:$secs\n";
         $maxtl = length $tab{$proj}{timestring} if $maxtl < length $tab{$proj}{timestring};
     }
-    for my$proj (sort keys %tab) {
+    for my $proj (sort keys %tab) {
         print sprintf '%-' . ($maxl + 2) . 's%' . $maxtl . 's', $proj, $tab{$proj}{timestring};
     }
 }
@@ -239,6 +236,13 @@ sub print_status {
 }
 
 
+sub cat {
+    my $file = shift;
+    open my $F, '<', $file or die;
+    print while <$F>;
+}
+
+
 ################################################################
 #			       M A I N
 ################################################################
@@ -276,22 +280,22 @@ while (@ARGV) {
 }
 die "No action specified.\n" unless $action;
 unless (exists $option{f}) {
-    if (-t 0){ # run with stdin from tty
+    if (-t 0) { # run with stdin from tty
         $option{f} = "$ENV{HOME}/.worktime";
     } else {
         $option{f} = '-';
     }
 }
 
-if   ('h' eq $action) { help()  }
-elsif('u' eq $action) { usage() }
-elsif('m' eq $action) { man()   }
+if    ('h' eq $action) { help()  }
+elsif ('u' eq $action) { usage() }
+elsif ('m' eq $action) { man()   }
 
-if    ('l' eq $action) { print_list()      }
+if    ('l' eq $action) { print_list() }
 elsif ('i' eq $action) { checkin(mytime()) }
 elsif ('r' eq $action) { print_report(mktime((localtime)[0 .. 5])) }
 elsif ('x' eq $action) { checkout_all(mytime()) }
-elsif ('w' eq $action) { system "cat $option{f}" }
+elsif ('w' eq $action) { cat($option{f}) }
 elsif ('s' eq $action) { print_status() }
 else  { checkout(mytime()) }
 
@@ -376,6 +380,6 @@ is not specified and STDIN is not a tty, use standard input.
 
 =head1 AUTHOR
 
-E. Choroba <choroba[at]matfyz[dot]cz>
+E. Choroba <choroba[at]matfyz[dot]cz> 2003-13
 
 =cut
