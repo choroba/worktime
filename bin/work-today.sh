@@ -1,5 +1,8 @@
 #! /bin/bash
 
+## Counts the work for today, or for any partial date given as
+## parameter, i.e. 2013/05.
+
 now=$(date +%Y/%m/%d)
 
 if [[ $1 == -s || $2 == -s ]] ; then

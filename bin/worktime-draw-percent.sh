@@ -1,8 +1,14 @@
 #! /bin/bash
 
-tmp=$(mktemp) || exit 1
+## Draws a graph for the given project, for each month showing the
+## time per subproject. Specify -p as the second parameter to get the
+## percentage rather than time.
 
-table=$(worktime -w | grep 'ufal\.' | sed 's/^;//;s/ufal\.//')
+tmp=$(mktemp) || exit 1
+proj=$1
+shift
+
+table=$(worktime -w | grep "$proj\." | sed "s/^;//;s/$proj\.//")
 dates=$(cut -d' ' -f2 <<< "$table" | cut -f1,2 -d/ | sort -u)
 works=$(cut -d' ' -f4 <<< "$table" | sort -u)
 datenames=$(for date in $dates ; do echo -n ' "'$date'"' $((++i)), ; done)

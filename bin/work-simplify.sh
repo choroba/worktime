@@ -1,2 +1,4 @@
 #! /bin/bash
-worktime -w | sed 's/ufal\..*/ufal/'
+## Replaces all entries "project.subproject" by "project" only.
+
+worktime -w | sed 's/\(.*\)\..*/\1/'

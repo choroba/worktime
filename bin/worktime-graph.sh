@@ -1,10 +1,11 @@
 #! /bin/bash
+## Draws a histogram of all the subprojects of the given project.
+
 tmp=$(mktemp) || exit 1
+proj=$1
 
-
-
-worktime -w | grep ufal'\.' | sed 's/;//' | worktime -r | worksort.sh > "$tmp"
-works=$(cut -f1 -d' ' "$tmp" | sed 's/ufal\.//' )
+worktime -w | grep $proj'\.' | sed 's/;//' | worktime -r | worksort.sh > "$tmp"
+works=$(cut -f1 -d' ' "$tmp" | sed "s/$proj\.//" )
 perl -i -pe'/([0-9]+):([0-9]+):([0-9]+)/;$_=(($1*60*60+$2*60+$3)/3600)." ";' "$tmp"
 sum=$(sed 's/ /+/g;s/+$/\n/' $tmp | bc -l)
 perl -i -ane '$_ /= '$sum'/100 for @F; print join " ",@F' "$tmp"
