@@ -152,6 +152,19 @@ sub print_list {
 }
 
 
+sub record {
+    my ($action, $time) = @_;
+    open my $F, '>>', $option{f} or die "Error: Can't open $option{f} for appending.";
+    print $F "$action $time $option{p}";
+    if (exists $option{c}) {
+        $option{c} =~ y/[]/()/;
+        print $F " [$option{c}]";
+    }
+    print $F "\n";
+    close $F;
+}
+
+
 sub checkin {
     my $time   = shift;
     my $change = shift;
@@ -166,17 +179,10 @@ sub checkin {
     if ($projects) {
         print STDERR 'Warning: Following project'
             . ($projects > 1 ? 's' : q()) . ' already running: ';
-        print map $_ . ' ', grep 'i' eq $tab{$_}{status}, keys %tab;
-        print "\n";
+        print STDERR map $_ . ' ', grep 'i' eq $tab{$_}{status}, keys %tab;
+        print STDERR "\n";
     }
-    open my $F, '>>', $option{f} or die "Error: Can't open $option{f} for appending.";
-    print $F "i $time $option{p}";
-    if (exists $option{c}) {
-        $option{c} =~ y/[]/()/;
-        print $F " [$option{c}]";
-    }
-    print $F "\n";
-    close $F;
+    record('i', $time);
 }
 
 
@@ -189,15 +195,8 @@ sub checkout {
     die "Error: No project specified.\n" unless $option{p};
     $option{p} =~ y/[]/()/;
     die "Error: Project $option{p} not checked in.\n" unless 'i' eq $tab{$option{p}}{status};
-    open my $F, '>>', $option{f} or die"Error: Can't open $option{f} for appending.";
     my $time = shift;
-    print $F "o $time $option{p}";
-    if (exists $option{c}) {
-        $option{c} =~ y/[]/()/;
-        print $F " [$option{c}]";
-    }
-    print $F "\n";
-    close $F;
+    record('o', $time);
 }
 
 
@@ -255,18 +254,13 @@ while (@ARGV) {
     } elsif ($arg =~ m/^-([mwsriolhux])/) {
         unless ($action) {
             $action = $1;
-            if ($action =~ /[ix]/) {
+            if ($action =~ /[ixo]/) {
                 if ($arg =~ m/^-.(.+)/) {
                     $option{p} = $1
                 } else {
                     $option{p} = shift;
                 }
-            }
-            if ($action =~ /[o]/) {
-                if ($arg =~ m/^-.(.+)/) {
-                    $option{p} = $1;
-                } else {
-                    $option{p} = shift;
+                if ($action =~ /[o]/) {
                     unshift @ARGV, $option{p} if $option{p} =~ m/^-[cf]/;
                 }
             }
@@ -276,7 +270,7 @@ while (@ARGV) {
     } else {
         $error_msg = "Unknown option $arg.\n";
     }
-    die 'Error: ' . $error_msg . "See worktime -h or -u.\n" if $error_msg;
+    die 'Error: ' . $error_msg . "See worktime -h, -u, or -m.\n" if $error_msg;
 }
 die "No action specified.\n" unless $action;
 unless (exists $option{f}) {
