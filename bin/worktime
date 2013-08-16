@@ -238,7 +238,7 @@ sub print_status {
 
 sub cat {
     my $file = shift;
-    open my $F, '<', $file or die;
+    open my $F, '<', $file or die "Cannot open $file: $!\n";
     print while <$F>;
 }
 
