@@ -295,6 +295,8 @@ unless (exists $option{f}) {
     }
 }
 
+undef $option{f} if '-' eq $option{f};
+
 if    ('h' eq $action) { help()  }
 elsif ('u' eq $action) { usage() }
 elsif ('m' eq $action) { man()   }
