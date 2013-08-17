@@ -38,7 +38,7 @@ if [[ $table ]] ; then
     worktime -r <<< "$table"
     if [[ $SIMPLE ]] ; then
         echo '  'Simplified
-        worktime -w <<< "$table" | work-simplify.sh | worktime -r
+        worktime -w <<< "$table" | work-simplify.pl | worktime -r
     fi
 
 else

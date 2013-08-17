@@ -56,6 +56,6 @@ for my $project (keys %hours) {
 
 Outputs data in a format that can be used by gnuplot to draw a "punchcard".
 
-  plot '< work-simplify.sh | work-graph.perl | grep PROJECT' u 2:3 with boxes
+  plot '< work-simplify.pl | work-graph.perl | grep PROJECT' u 2:3 with boxes
 
 =cut
