@@ -50,10 +50,22 @@ sub mytime {
 }
 
 
+sub read_handle {
+    my $die = shift;
+    my $F;
+    if (defined $option{f}) {
+        open $F, '<', $option{f}
+            or die "Error: Can't open $option{f} for reading.\n" if 'die' eq $die;
+    } else {
+        $F = *STDIN{IO};
+    }
+    return $F;
+}
+
 sub print_report {
     my %tab;
     my $now = shift;
-    open my $F, '<', $option{f} or die "Error: Can't open $option{f} for reading.\n";
+    my $F = read_handle('die');
     while (my $line = <$F>) {
         if (my    ($io,  $y,        $mo,       $d,        $h,        $mi,       $s) = $line
             =~ m!^([oi]) ([0-9]{4})/([0-9]{2})/([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})!) {
@@ -110,10 +122,7 @@ sub print_report {
 sub status {
     my $die = shift;
     my (%tab, $projects);
-    my $F;
-    unless (open $F, '<', $option{f}) {
-        die "Error: Can't open $option{f} for reading.\n" if 'die' eq $die;
-    }
+    my $F = read_handle($die);
     while (my $line = <$F>) {
         if (my ($time, $proj) = $line =~ m/^i (.......... ........) (.*)/) {
             $proj =~ s/ \[.*//;
@@ -135,7 +144,7 @@ sub status {
 
 
 sub list {
-    open my $F, '<', $option{f} or die "Error: Can't open $option{f} for reading.\n";
+    my $F = read_handle('die');
     my %project;
     while (my $line = <$F>) {
         if (my ($name) = $line =~ m/^i [^ ]+ [^ ]+ (.*)/) {
@@ -237,7 +246,7 @@ sub print_status {
 
 sub cat {
     my $file = shift;
-    open my $F, '<', $file or die "Cannot open $file: $!\n";
+    my $F = read_handle('die');
     print while <$F>;
 }
 
@@ -277,7 +286,7 @@ unless (exists $option{f}) {
     if (-t 0) { # run with stdin from tty
         $option{f} = "$ENV{HOME}/.worktime";
     } else {
-        $option{f} = '-';
+        undef $option{f};
     }
 }
 
