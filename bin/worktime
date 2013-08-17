@@ -54,8 +54,13 @@ sub read_handle {
     my $die = shift;
     my $F;
     if (defined $option{f}) {
-        open $F, '<', $option{f}
-            or die "Error: Can't open $option{f} for reading.\n" if 'die' eq $die;
+        my $success = open $F, '<', $option{f};
+        if (not $success) {
+            die "Error: Can't open $option{f} for reading: $!\n" if 'die' eq $die;
+            undef $F;
+            print STDERR "Warning: Creating new file $option{f}.\n";
+            open $F, '>', $option{f} or die "Cannot create $option{f}: $!\n" if 'create' eq $die;
+        }
     } else {
         $F = *STDIN{IO};
     }
@@ -163,7 +168,7 @@ sub print_list {
 
 sub record {
     my ($action, $time) = @_;
-    open my $F, '>>', $option{f} or die "Error: Can't open $option{f} for appending.";
+    open my $F, '>>', $option{f} or die "Error: Can't open $option{f} for appending: $!\n";
     print $F "$action $time $option{p}";
     if (exists $option{c}) {
         $option{c} =~ y/[]/()/;
@@ -183,7 +188,7 @@ sub checkin {
     }
     die "Error: Project not specified.\n" unless $option{p};
     $option{p} =~ y/[]/()/;
-    my ($projects, %tab) = status('no-die');
+    my ($projects, %tab) = status('create');
     die "Error: Already checked-in.\n" if 'i' eq $tab{$option{p}}{status};
     if ($projects) {
         print STDERR 'Warning: Following project'
