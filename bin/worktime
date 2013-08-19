@@ -57,7 +57,6 @@ sub read_handle {
         my $success = open $F, '<', $option{f};
         if (not $success) {
             die "Error: Can't open $option{f} for reading: $!\n" if 'die' eq $die;
-            undef $F;
             print STDERR "Warning: Creating new file $option{f}.\n";
             open $F, '>', $option{f} or die "Cannot create $option{f}: $!\n" if 'create' eq $die;
         }
