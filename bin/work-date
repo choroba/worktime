@@ -1,0 +1,83 @@
+#! /usr/bin/perl
+use warnings;
+use strict;
+use feature qw{ say };
+
+use Time::Piece;
+use Getopt::Long;
+
+GetOptions('f|file=s' => \ my $file);
+$file //= $ENV{HOME} . '/.worktime';
+my ($from, $to) = @ARGV;
+$from //= '0E0';
+$to   //= localtime->ymd('/');
+
+my $FH;
+if ('-' eq $file) {
+    $FH = *STDIN{IO};
+} else {
+    open $FH, '<', $file or die "Can't open $file: $!";
+}
+
+my %projects;
+while (<$FH>) {
+    my ($in_out, $date, $time, $project) = split;
+
+    last if $date gt $to;
+
+    if ('i' eq $in_out) {
+        if ($projects{$project}{start}) {
+            die "Double check-in for $project."
+
+        } elsif ($date lt $from) {
+            $projects{$project}{start} = [ $from, '00:00:00' ];
+
+        } elsif ($date le $to) {
+            $projects{$project}{start} = [ $date, $time ];
+        }
+
+    } elsif ('o' eq $in_out) {
+        if (! $projects{$project}{start}) {
+            die "No check-in for $project."
+
+        } elsif ($date lt $from) {
+            delete $projects{$project}{start};
+
+        } elsif ($date le $to) {
+            $projects{$project}{sum} += between($projects{$project}{start}, $date, $time);
+
+        } else {
+            $projects{$project}{sum} += between($projects{$project}{start}, $to, '00:00:00', 'add day');
+        }
+        delete $projects{$project}{start};
+
+    } else {
+        die "Invalid state '$in_out'."
+    }
+}
+
+my $endtime = localtime->hms;
+for my $project (sort keys %projects) {
+    $projects{$project}{sum} += between($projects{$project}{start}, $to, $endtime)
+        if $projects{$project}{start};
+    my $all  = $projects{$project}{sum};
+    my $secs = $all % 60;
+    $all     = int $all / 60;
+    my $mins = $all % 60;
+    my $hrs  = int $all / 60;
+    printf "%s\t%02d:%02d:%02d\n", $project, $hrs, $mins, $secs;
+}
+
+
+sub between {
+    my ($from, $to_date, $to_time, $add_day) = @_;
+    my ($from_date, $from_time) = @$from;
+    if ($add_day) {
+        my $end_secs = 'Time::Piece'->strptime($to_date, '%Y/%m/%d')->epoch;
+        $end_secs += 60 * 60 * 26;
+        $to_date = localtime($end_secs)->ymd('/'); warn $to_date;
+    }
+    my $start = 'Time::Piece'->strptime($from_date . $from_time, '%Y/%m/%d%H:%M:%S');
+    my $end   = 'Time::Piece'->strptime($to_date   . $to_time,   '%Y/%m/%d%H:%M:%S');
+    return $end - $start
+}
