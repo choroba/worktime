@@ -60,6 +60,7 @@ my $endtime = localtime->hms;
 for my $project (sort keys %projects) {
     $projects{$project}{sum} += between($projects{$project}{start}, $to, $endtime)
         if $projects{$project}{start};
+    next unless $projects{$project}{sum};
     my $all  = $projects{$project}{sum};
     my $secs = $all % 60;
     $all     = int $all / 60;
