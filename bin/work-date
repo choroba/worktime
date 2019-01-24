@@ -56,7 +56,13 @@ while (<$FH>) {
     }
 }
 
-my $endtime = localtime->hms;
+my $endtime;
+if ($to eq localtime->ymd('/')) {
+    $endtime = localtime->hms;
+} else {
+    $to = add_day($to);
+    $endtime = '00:00:00';
+}
 for my $project (sort keys %projects) {
     $projects{$project}{sum} += between($projects{$project}{start}, $to, $endtime)
         if $projects{$project}{start};
@@ -73,12 +79,16 @@ for my $project (sort keys %projects) {
 sub between {
     my ($from, $to_date, $to_time, $add_day) = @_;
     my ($from_date, $from_time) = @$from;
-    if ($add_day) {
-        my $end_secs = 'Time::Piece'->strptime($to_date, '%Y/%m/%d')->epoch;
-        $end_secs += 60 * 60 * 26;
-        $to_date = localtime($end_secs)->ymd('/'); warn $to_date;
-    }
+    $to_date = add_day($to_date) if $add_day;
     my $start = 'Time::Piece'->strptime($from_date . $from_time, '%Y/%m/%d%H:%M:%S');
     my $end   = 'Time::Piece'->strptime($to_date   . $to_time,   '%Y/%m/%d%H:%M:%S');
     return $end - $start
+}
+
+sub add_day {
+    my ($date) = @_;
+    my $secs = 'Time::Piece'->strptime($date, '%Y/%m/%d')->epoch;
+    $secs += 60 * 60 * 26;
+    $date = localtime($secs)->ymd('/');
+    return $date
 }
