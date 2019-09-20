@@ -6,11 +6,20 @@ use feature qw{ say };
 use Time::Piece;
 use Getopt::Long;
 
+sub auto_complete {
+    my ($date) = @_;
+    return $date unless $date =~ m=^[0-9]{4}(?:/(?:[0-9]{2})?)?=;
+    $date .= substr "..../01/01", length $date;
+    return $date
+}
+
 GetOptions('f|file=s' => \ my $file);
 $file //= $ENV{HOME} . '/.worktime';
 my ($from, $to) = @ARGV;
 $from //= '0E0';
 $to   //= localtime->ymd('/');
+
+$_ = auto_complete($_) for $from, $to;
 
 my $FH;
 if ('-' eq $file) {
