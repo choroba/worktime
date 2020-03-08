@@ -47,7 +47,7 @@ while (<$FH>) {
 
     } elsif ('o' eq $in_out) {
         if (! $projects{$project}{start}) {
-            die "No check-in for $project."
+            die "No check-in for $project ($date $time)."
 
         } elsif ($date lt $from) {
             delete $projects{$project}{start};
