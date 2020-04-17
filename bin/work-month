@@ -1,0 +1,59 @@
+#!/usr/bin/perl
+use warnings;
+use strict;
+use feature qw{ say };
+use Syntax::Construct qw{ // };
+
+use Date::Holidays::CZ qw{ holidays };
+use Time::Piece;
+
+my ($year, $month, $day) = split m{[-/]}, shift // localtime->strftime('%Y-%m-%d');
+my $project = shift // 'gd';
+
+my ($h, $m, $s) = split /:/,
+    (split ' ', qx{ work-date $year/$month/01 $year/$month/$day | grep $project})[1];
+$_ //= 0 for $h, $m, $s;
+
+my $month_start = 'Time::Piece'->strptime("$year${month}01", '%Y%m%d');
+my $month_end   = 'Time::Piece'->strptime("$year$month$day", '%Y%m%d');
+
+my $expected = 0;
+for my $d (1 .. $day) {
+    next if 1 == 'Time::Piece'->strptime("$year$month$d", '%Y%m%d')->wday % 6;
+    $expected += 8;
+}
+
+my @holidays = @{ holidays(YEAR => $year) };
+my $exclude = 0;
+for my $holiday (@holidays) {
+    next if 1 == localtime($holiday)->wday % 6;
+    ++ $exclude if $month_start <= $holiday && $holiday <= $month_end;
+}
+$expected -= 8 * $exclude;
+
+my $balance = ($h * 60 * 60 + $m * 60 + $s) - $expected * 60 * 60;
+my $bs = abs($balance) % 60;
+my $bm_ = (abs($balance) - $bs) / 60;
+my $bm  = $bm_ % 60;
+my $bh = ($bm_ - $bm) / 60;
+substr $bh, 0, 0, '-' if $balance < 0;
+
+say "Expected: $expected";
+say "Worked:   $h:$m:$s";
+printf "Balance:  %s:%02d:%02d\n", $bh, $bm, $bs;
+
+=head1 NAME
+
+work-month - Show work hours balance for the given month
+
+=head1 SYNOPSIS
+
+    work-month
+
+Shows the balance for the current month from the start up to today.
+
+    work-month 2020/03/12
+
+Show the balance for the given month up to the given date.
+
+=cut
