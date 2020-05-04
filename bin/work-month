@@ -14,8 +14,8 @@ my ($h, $m, $s) = split /:/,
     (split ' ', qx{ work-date $year/$month/01 $year/$month/$day | grep $project})[1];
 $_ //= 0 for $h, $m, $s;
 
-my $month_start = 'Time::Piece'->strptime("$year${month}01", '%Y%m%d');
-my $month_end   = 'Time::Piece'->strptime("$year$month$day", '%Y%m%d');
+my $month_start = localtime 'Time::Piece'->strptime("$year${month}01", '%Y%m%d');
+my $month_end   = localtime 'Time::Piece'->strptime("$year$month$day", '%Y%m%d');
 
 my $expected = 0;
 for my $d (1 .. $day) {
@@ -27,7 +27,7 @@ my @holidays = @{ holidays(YEAR => $year) };
 my $exclude = 0;
 for my $holiday (@holidays) {
     next if 1 == localtime($holiday)->wday % 6;
-    ++ $exclude if $month_start <= $holiday && $holiday <= $month_end;
+    ++$exclude if $month_start <= $holiday && $holiday <= $month_end;
 }
 $expected -= 8 * $exclude;
 
