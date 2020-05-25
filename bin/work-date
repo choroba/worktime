@@ -19,6 +19,8 @@ my ($from, $to) = @ARGV;
 $from //= '0E0';
 $to   //= localtime->ymd('/');
 
+s{-}{/}g for $from, $to;
+
 $_ = auto_complete($_) for $from, $to;
 
 my $FH;
