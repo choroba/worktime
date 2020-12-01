@@ -20,7 +20,7 @@ print ', seconds: ', $sum, "\n";
 
 =head1 work-sum.pl
 
-Sums the time in the output of work-today.sh.
+Sums the time in the output of work-today.sh or work-date.
 
 =cut
 
