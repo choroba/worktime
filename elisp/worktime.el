@@ -9,8 +9,8 @@
 
 (define-minor-mode worktime-minor-mode
   "Worktime minor mode."
-  t
-  worktime-modeline
+  :init-value t
+  :lighter worktime-modeline
   )
 
 (setq worktime-minor-mode-hook '(worktime-set-modeline))
@@ -20,7 +20,7 @@
         (shell-command-to-string 
          (concat "echo -n `worktime -s -f " worktime-file "|grep since|cut -d'[' -f1`" )))
   (if (> (length worktime-modeline) 0)
-      (setq worktime-modeline (concat " {WT:" worktime-modeline "} ")))
+      (setq worktime-modeline (concat " {🔨" worktime-modeline "} ")))
   )
 
 (defun worktime-list ()
