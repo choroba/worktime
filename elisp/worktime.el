@@ -20,7 +20,7 @@
         (shell-command-to-string 
          (concat "echo -n `worktime -s -f " worktime-file "|grep since|cut -d'[' -f1`" )))
   (if (> (length worktime-modeline) 0)
-      (setq worktime-modeline (concat " {🔨" worktime-modeline "} ")))
+      (setq worktime-modeline (concat " {⚒" worktime-modeline "} ")))
   )
 
 (defun worktime-list ()
