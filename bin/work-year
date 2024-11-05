@@ -1,0 +1,89 @@
+#!/usr/bin/perl
+use warnings;
+use strict;
+use experimental qw( signatures );
+
+use Time::Piece;
+
+sub get_start_date($file) {
+    open my $in, '<', $file or die $!;
+    while (<$in>) {
+        return ($1, $2) if m{^[io] ([0-9]{4})/([0-9]{2})/[0-9]{2} };
+    }
+    die "No start date in $file"
+}
+
+sub last_day($year, $month) {
+    my $day = 31;
+    while (1) {
+        my $tp = 'Time::Piece'->strptime("$year/$month/$day", '%Y/%m/%d');
+        return $day if $tp->strftime('%d') eq $day;
+        --$day
+    }
+}
+
+sub update($total, $date) {
+    print "$date\n";
+    open my $pipe, '-|', 'work-month', $date;
+    while (<$pipe>) {
+        s/$/:0:0/ if /Expected/;
+        if (/^([^:]+): *(-?)([0-9]+):([0-9]+):([0-9]+)$/) {
+            my ($type, $neg, $h, $m, $s) = @{^CAPTURE};
+            if ($neg) {
+                $_ *= -1 for $h, $m, $s;
+            }
+            $total->{$1}{h} += $h;
+            $total->{$1}{m} += $m;
+            $total->{$1}{s} += $s;
+        } else {
+            warn "Can't parse $_";
+        }
+    }
+}
+
+{   my %NEXT = (s => 'm', m => 'h');
+    sub normalize($total) {
+        for my $type (keys %$total) {
+            my $neg = grep $_ < 0, values %{ $total->{$type} };
+            for my $part (qw( s m )) {
+                my $value = abs $total->{$type}{$part};
+                if ($value > 59) {
+                    my $rest = $value % 60;
+                    my $over = ($value - $rest) / 60;
+                    if ($neg) {
+                        $_ *= -1 for $over, $rest;
+                    }
+                    $total->{$type}{ $NEXT{$part} } += $over;
+                    $total->{$type}{$part} = $rest;
+                }
+            }
+        }
+    }
+}
+
+my $file = shift // "$ENV{HOME}/.worktime";
+my ($year, $month) = get_start_date($file);
+my $last_year  = localtime->strftime('%Y');
+my $last_month = localtime->strftime('%m');
+
+my $total = {};
+while ($year ne $last_year || $month ne $last_month) {
+    my $last_day = last_day($year, $month);
+    my $date = sprintf '%04d/%02d/%02d', $year, $month, $last_day;
+    update($total, $date);
+    if (++$month > 12) {
+        $month = 1;
+        ++$year;
+    }
+}
+
+update($total, localtime->strftime('%Y/%m/%d'))
+    unless localtime->strftime('%d') eq last_day($last_year, $last_month);
+
+normalize($total);
+
+for my $type (qw( Expected Worked Balance )) {
+    printf '%-10s', "$type:";
+    print '-' if grep $_ < 0, values %{ $total->{$type} };
+    printf "%d:%02d:%02d\n", map abs, @{ $total->{$type} }{qw{ h m s }};
+}
