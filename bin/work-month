@@ -8,10 +8,10 @@ use Date::Holidays::CZ qw{ holidays };
 use Time::Piece;
 
 my ($year, $month, $day) = split m{[-/]}, shift // localtime->strftime('%Y-%m-%d');
-my $project = shift // 'gd';
+my $project = shift // 'ufal';
 
 my ($h, $m, $s) = split /:/,
-    (split ' ', qx{ work-date $year/$month/01 $year/$month/$day | grep $project})[1];
+    (split ' ', qx{ worktime -w | grep $project | cut -d. -f1 | work-date -f - $year/$month/01 $year/$month/$day })[1];
 $_ //= 0 for $h, $m, $s;
 
 my $month_start = localtime 'Time::Piece'->strptime("$year${month}01", '%Y%m%d');
@@ -39,7 +39,7 @@ my $bh = ($bm_ - $bm) / 60;
 substr $bh, 0, 0, '-' if $balance < 0;
 
 say "Expected: $expected";
-say "Worked:   $h:$m:$s";
+printf "Worked:   %d:%02d:%02d\n", $h, $m, $s;
 printf "Balance:  %s:%02d:%02d\n", $bh, $bm, $bs;
 
 =head1 NAME
