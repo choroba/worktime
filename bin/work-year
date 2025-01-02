@@ -67,7 +67,7 @@ my $last_year  = localtime->strftime('%Y');
 my $last_month = localtime->strftime('%m');
 
 my $total = {};
-while ($year ne $last_year || $month ne $last_month) {
+while ($year ne $last_year || $month != $last_month) {
     my $last_day = last_day($year, $month);
     my $date = sprintf '%04d/%02d/%02d', $year, $month, $last_day;
     update($total, $date);
