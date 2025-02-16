@@ -82,8 +82,25 @@ update($total, localtime->strftime('%Y/%m/%d'))
 
 normalize($total);
 
-for my $type (qw( Expected Worked Balance )) {
+for my $type (qw( Expected Worked )) {
     printf '%-10s', "$type:";
     print '-' if grep $_ < 0, values %{ $total->{$type} };
     printf "%d:%02d:%02d\n", map abs, @{ $total->{$type} }{qw{ h m s }};
 }
+my $balance = $total->{Worked}{h} * 60 * 60
+            + $total->{Worked}{m} * 60
+            + $total->{Worked}{s}
+            - $total->{Expected}{h} * 60 * 60
+            - $total->{Expected}{m} * 60
+            - $total->{Expected}{s};
+print 'Balance: ', $balance < 0 ? '-' : "";
+
+$balance = abs $balance;
+
+my $s = $balance % 60;
+$balance -= $s;
+$balance /= 60;
+my $m = $balance % 60;
+$balance -= $m;
+my $h = $balance / 60;
+printf "%d:%02d:%02d\n", $h, $m, $s;
