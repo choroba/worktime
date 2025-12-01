@@ -11,7 +11,7 @@ my ($year, $month, $day) = split m{[-/]}, shift // localtime->strftime('%Y-%m-%d
 my $project = shift // 'ufal';
 
 my ($h, $m, $s) = split /:/,
-    (split ' ', qx{ worktime -w | grep $project | cut -d. -f1 | work-date -f - $year/$month/01 $year/$month/$day })[1];
+    (split ' ', qx{ worktime -w | grep $project | cut -d. -f1 | work-date -f - $year/$month/01 $year/$month/$day })[1] // "";
 $_ //= 0 for $h, $m, $s;
 
 my $month_start = localtime 'Time::Piece'->strptime("$year${month}01", '%Y%m%d');
