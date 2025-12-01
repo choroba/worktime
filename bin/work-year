@@ -77,8 +77,10 @@ while ($year ne $last_year || $month != $last_month) {
     }
 }
 
-update($total, localtime->strftime('%Y/%m/%d'))
-    unless localtime->strftime('%d') eq last_day($last_year, $last_month);
+update($total, localtime->strftime('%Y/%m/%d'));
+# This was originally conditional:
+# unless localtime->strftime('%d') eq last_day($last_year, $last_month);
+# But it fails to count the current month on the last day. Why?
 
 normalize($total);
 
