@@ -92,7 +92,10 @@ sub print_report {
                     die"Error: Double check-out.\n";
                 }
                 $tab{$proj}{status} = 'o';
-                $tab{$proj}{sumtime} += difftime($time, $tab{$proj}{itime});
+                my $diff = difftime($time, $tab{$proj}{itime});
+                die sprintf "Error: negative time for %s at %04d/%02d/%02d %02d:%02d:%02d.\n",
+                    $proj, 1900 + $y, 1 + $mo, $d, $h, $mi, $s if $diff < 0;
+                $tab{$proj}{sumtime} += $diff;
             }
         } else {
             die "Error: Wrong file format: $option{f}.\n" unless $line =~ m/^;/;
