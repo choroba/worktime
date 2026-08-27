@@ -1,3 +1,5 @@
+;;; -*- lexical-binding: nil -*-
+;;; -*- mode: elisp -*-
 ;; WORKTIME.EL v1.1
 ;; (c) E. Choroba 2003-06
 
